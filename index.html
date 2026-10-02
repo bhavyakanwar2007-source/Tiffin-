@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Tiffin Register</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:sans-serif;background:#fff8e7;color:#222;padding-bottom:84px}
+h1{margin:0;padding:16px;background:#e65100;color:#fff;font-size:22px}
+.w{padding:12px}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 1px 4px #0003}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nm{font-size:20px;font-weight:bold}
+.q{font-size:30px;font-weight:bold;min-width:40px;text-align:center}
+button{font-size:18px;border:0;border-radius:12px;padding:14px 16px;background:#e65100;color:#fff;font-weight:bold}
+button.g{background:#2e7d32}button.r{background:#c62828}button.s{background:#9e9e9e}
+button.big{width:100%;margin-top:8px;font-size:20px}
+.nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:2px solid #e65100}
+.nav div{flex:1;text-align:center;padding:10px 2px;font-size:13px}
+.nav div b{display:block;font-size:22px}
+.nav .on{background:#ffe0b2;font-weight:bold}
+input,textarea{font-size:20px;padding:10px;width:100%;border:2px solid #ccc;border-radius:10px}
+.tot{background:#fff3e0;border:2px solid #e65100}
+.pd{color:#2e7d32}.pn{color:#c62828}
+small{color:#666}
+</style></head><body>
+<h1>🍱 Tiffin Register</h1>
+<div class="w" id="app"></div>
+<div class="nav" id="nav"></div>
+<script>
+const K='tiffin_v1';
+let D;
+try{D=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!D||!D.c)D={c:[],e:{},p:70,paid:{}};
+function save(){try{localStorage.setItem(K,JSON.stringify(D))}catch(e){alert('Save failed')}}
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+let tab=0,date=ds(new Date()),ym=date.slice(0,7);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function shiftDay(n){const d=new Date(date+'T12:00:00');d.setDate(d.getDate()+n);date=ds(d);render()}
+function shiftMonth(n){let [y,m]=ym.split('-').map(Number);m+=n;if(m<1){m=12;y--}if(m>12){m=1;y++}ym=y+'-'+pad(m);render()}
+function qty(id){return (D.e[date]&&D.e[date][id])||0}
+function setQ(id,v){if(v<0)v=0;(D.e[date]=D.e[date]||{})[id]=v;save();render()}
+function add(){const n=(prompt('Customer name / ग्राहक का नाम')||'').trim();if(n){D.c.push({id:Date.now(),n});save();render()}}
+function edit(id){const c=D.c.find(x=>x.id==id);const n=(prompt('Edit name / नाम बदलें',c.n)||'').trim();if(n){c.n=n;save();render()}}
+function del(id){if(confirm('Delete? / हटाएं?')){D.c=D.c.filter(x=>x.id!=id);save();render()}}
+function togglePaid(id){const k=ym+'|'+id;D.paid[k]=!D.paid[k];save();render()}
+function setPrice(){const v=parseFloat(document.getElementById('pr').value);if(v>=0){D.p=v;save();alert('Saved ✓')}}
+function monthCount(id){let t=0;for(const d in D.e)if(d.startsWith(ym))t+=D.e[d][id]||0;return t}
+function doBackup(){const t=document.getElementById('bk');t.value=JSON.stringify(D);t.select();try{navigator.clipboard.writeText(t.value)}catch(e){document.execCommand('copy')}alert('Copied! Paste it in WhatsApp/Notes to keep safe.\nकॉपी हो गया! WhatsApp/Notes में paste करके रखें।')}
+function doRestore(){const t=document.getElementById('bk').value.trim();try{const x=JSON.parse(t);if(!x.c||!x.e)throw 0;if(!confirm('Replace all data? / सारा डेटा बदलें?'))return;D=x;save();alert('Restored ✓');render()}catch(e){alert('Invalid backup / गलत बैकअप')}}
+function render(){
+ const A=document.getElementById('app');let h='';
+ if(tab==0){
+  h+=`<div class="card row"><button onclick="shiftDay(-1)">‹</button><input type="date" value="${date}" onchange="if(this.value){date=this.value;ym=date.slice(0,7);render()}" style="text-align:center"><button onclick="shiftDay(1)">›</button></div>`;
+  if(!D.c.length)h+='<div class="card">Add customers first in 👥 tab<br><small>पहले ग्राहक जोड़ें</small></div>';
+  D.c.forEach(c=>{const q=qty(c.id);h+=`<div class="card"><div class="nm">${esc(c.n)}</div><div class="row" style="margin-top:8px"><button class="s" onclick="setQ(${c.id},${q-1})">−</button><div class="q">${q}</div><button class="g" style="flex:1" onclick="setQ(${c.id},${q+1})">+ Tiffin</button><button class="r" onclick="setQ(${c.id},0)">0</button></div></div>`});
+ }else if(tab==1){
+  let T=0;const rows=D.c.map(c=>{const n=monthCount(c.id);T+=n;const p=D.paid[ym+'|'+c.id];return `<div class="card"><div class="row"><div class="nm">${esc(c.n)}</div><div><b>${n}</b> tiffin</div></div><div class="row" style="margin-top:6px"><div style="font-size:22px">₹${n*D.p}</div><button class="${p?'g':'r'}" onclick="togglePaid(${c.id})">${p?'✔ Paid / दिया':'Pending / बाकी'}</button></div></div>`}).join('');
+  h+=`<div class="card row"><button onclick="shiftMonth(-1)">‹</button><div class="nm">${ym}</div><button onclick="shiftMonth(1)">›</button></div>`+rows+`<div class="card tot"><div class="nm">Total / कुल</div><div style="font-size:22px">${T} tiffin<br>₹${T*D.p}</div></div>`;
+ }else if(tab==2){
+  h+='<button class="big g" onclick="add()">+ Add Customer / ग्राहक जोड़ें</button><div style="height:10px"></div>';
+  D.c.forEach(c=>{h+=`<div class="card"><div class="nm">${esc(c.n)}</div><div class="row" style="margin-top:8px"><button style="flex:1" onclick="edit(${c.id})">✏ Edit</button><button class="r" style="flex:1" onclick="del(${c.id})">🗑 Delete</button></div></div>`});
+ }else{
+  h+=`<div class="card"><div class="nm">Price per tiffin / कीमत (₹)</div><input id="pr" type="number" inputmode="decimal" value="${D.p}"><button class="big g" onclick="setPrice()">Save / सेव</button></div>
+  <div class="card"><div class="nm">Backup / Restore</div><small>Backup copies all data. To restore, paste here and tap Restore.</small><textarea id="bk" rows="4"></textarea><button class="big" onclick="doBackup()">📋 Backup (Copy)</button><button class="big s" onclick="doRestore()">♻ Restore (Paste)</button></div>`;
+ }
+ A.innerHTML=h;
+ const N=[['📅','Today<br>आज'],['📊','Month<br>महीना'],['👥','Customers<br>ग्राहक'],['⚙️','Settings<br>सेटिंग']];
+ document.getElementById('nav').innerHTML=N.map((n,i)=>`<div class="${i==tab?'on':''}" onclick="tab=${i};render()"><b>${n[0]}</b>${n[1]}</div>`).join('');
+}
+render();
+</script></body></html>
